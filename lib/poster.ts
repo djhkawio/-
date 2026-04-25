@@ -27,7 +27,7 @@ export type PosterVariant = {
   copy: PosterCopy;
 };
 
-type LocaleCode = "en" | "zh" | "ja" | "fr" | "de" | "es" | "pt";
+type LocaleCode = "en" | "zh" | "ja" | "fr" | "de" | "es" | "pt" | "ro" | "it" | "pl";
 
 const defaultDisclaimer =
   "Educational content only. Not financial advice. Results are not guaranteed.";
@@ -46,7 +46,10 @@ const localeRules: Array<{ lang: LocaleCode; aliases: string[] }> = [
   { lang: "fr", aliases: ["france", "french", "法国"] },
   { lang: "de", aliases: ["germany", "deutschland", "德国"] },
   { lang: "es", aliases: ["spain", "españa", "espanol", "西班牙"] },
-  { lang: "pt", aliases: ["brazil", "brasil", "brazilian", "巴西"] },
+  { lang: "pt", aliases: ["brazil", "brasil", "brazilian", "portugal", "portuguese", "巴西", "葡萄牙"] },
+  { lang: "ro", aliases: ["romania", "romanian", "românia", "罗马尼亚"] },
+  { lang: "it", aliases: ["italy", "italian", "italia", "意大利"] },
+  { lang: "pl", aliases: ["poland", "polish", "polska", "波兰"] },
   { lang: "en", aliases: ["united states", "usa", "us", "america", "uk", "united kingdom"] }
 ];
 
@@ -55,7 +58,10 @@ function sanitizeTheme(input: string) {
 }
 
 function removeForbidden(text: string): string {
-  return forbidden.reduce((acc, rule) => acc.replace(rule, "")).replace(/\s{2,}/g, " ").trim();
+  return forbidden
+    .reduce<string>((acc, rule) => acc.replace(rule, ""), text)
+    .replace(/\s{2,}/g, " ")
+    .trim();
 }
 
 function detectLocale(countryInput: string): LocaleCode {
@@ -155,6 +161,52 @@ function i18nCopy(lang: LocaleCode, payload: FormData, idx: number): PosterCopy 
         "Conteúdo educacional, sem promessa de retorno"
       ],
       cta: "Ver pontos principais",
+      disclaimer: defaultDisclaimer
+    };
+  }
+
+
+  if (lang === "ro") {
+    return {
+      language: "Română",
+      headline: `${safeTheme} pentru vârste ${age}`,
+      subline: `Mesaj ${style.toLowerCase()}, clar și credibil, optimizat pentru mobil.`,
+      bullets: [
+        `Versiunea ${idx + 1}: format 1254×1254, mobile-first`,
+        "Informații esențiale prezentate într-o structură profesionistă",
+        "Conținut educațional, fără promisiuni de câștig"
+      ],
+      cta: "Vezi punctele cheie",
+      disclaimer: defaultDisclaimer
+    };
+  }
+
+  if (lang === "it") {
+    return {
+      language: "Italiano",
+      headline: `${safeTheme} per età ${age}`,
+      subline: `Comunicazione ${style.toLowerCase()}, professionale e affidabile per mobile.`,
+      bullets: [
+        `Versione ${idx + 1}: formato 1254×1254 mobile-first`,
+        "Messaggi chiari con gerarchia visiva ordinata",
+        "Contenuto educativo, senza promesse di rendimento"
+      ],
+      cta: "Scopri i punti chiave",
+      disclaimer: defaultDisclaimer
+    };
+  }
+
+  if (lang === "pl") {
+    return {
+      language: "Polski",
+      headline: `${safeTheme} dla grupy ${age}`,
+      subline: `Styl ${style.toLowerCase()}, rzeczowy i budujący zaufanie na mobile.`,
+      bullets: [
+        `Wersja ${idx + 1}: format 1254×1254, podejście mobile-first`,
+        "Przejrzysty układ i profesjonalny ton",
+        "Treść edukacyjna bez obietnic zysku"
+      ],
+      cta: "Zobacz kluczowe informacje",
       disclaimer: defaultDisclaimer
     };
   }
