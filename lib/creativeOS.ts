@@ -284,7 +284,26 @@ export function buildDesignPrompt(parsed: ParsedInput, copy: CopyVersion, design
 
   return {
     design_direction: layoutNotes[design_version].direction,
-    prompt: `poster size: 1254x1254; target country: ${parsed.country}; target language: ${parsed.language}; target age: ${parsed.target_age}; ad objective: ${parsed.ad_objective}; art direction: ${layoutNotes[design_version].direction}; hero visual: institutional ${layoutNotes[design_version].notes}; background: premium financial depth with restrained light; color palette: navy/white/gray + subtle blue-green accent; typography style: high-contrast editorial sans serif; layout plan: headline top-left, subheadline mid-left, trust line below, CTA bottom-left, disclaimer bottom edge; exact text overlay: headline "${copy.headline}" / subheadline "${copy.subheadline}" / trust_reason "${copy.trust_reason}" / cta "${copy.cta}" / disclaimer "${copy.disclaimer}"; compliance restrictions: no guaranteed profit, no get-rich claims, no CFA, no portfolio manager, no celebrity endorsement, no internal labels, no JSON keys; mobile-first financial education poster, premium institutional realism`,
+    prompt: `Create a premium mobile-first financial education ad poster.
+Final poster size: 1254x1254.
+Target market: ${parsed.country}.
+Language: ${parsed.language}.
+Target audience: adults ${parsed.target_age}.
+Ad objective: ${parsed.ad_objective}.
+Visual art direction: ${layoutNotes[design_version].direction}.
+Hero visual: ${layoutNotes[design_version].notes}.
+Background style: high-trust institutional environment, not dashboard screenshot.
+Lighting: soft cinematic side light with subtle depth.
+Texture: refined paper/glass premium texture, restrained.
+Typography style: editorial sans-serif, high contrast, large readable headline.
+Layout rules: strict hierarchy, controlled whitespace, no text overlap, CTA clearly separated, disclaimer at bottom.
+Exact text overlay:
+- headline: "${copy.headline}"
+- subheadline: "${copy.subheadline}"
+- trust_reason: "${copy.trust_reason}"
+- cta: "${copy.cta}"
+- disclaimer: "${copy.disclaimer}"
+Compliance restrictions: educational framing only; no guaranteed profit; no get-rich wording; no CFA; no portfolio manager; no celebrity endorsement; no internal labels; no JSON keys.`,
     negative_prompt: "flashy crypto style, neon gambling mood, guaranteed profit language, get rich quick, insider info, specific investment firm name, CFA, portfolio manager, celebrity endorsement, fake testimonial, exact income claims, candlestick chart",
     layout_notes: layoutNotes[design_version].notes,
     text_overlay: {

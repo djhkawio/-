@@ -20,7 +20,7 @@ const designOrder: DesignTemplate[] = [
   "mistake_prevention"
 ];
 
-async function generatePreview(copy: { headline: string; subheadline: string; trust_reason: string; cta: string; disclaimer: string }, layoutType: string): Promise<string> {
+async function generatePreview(copy: { headline: string; subheadline: string; trust_reason: string; cta: string; disclaimer: string }, layoutType: string, language: string): Promise<string> {
   const headline = copy.headline.replace(/[<>&]/g, "");
   const subheadline = copy.subheadline.replace(/[<>&]/g, "");
   const trust = copy.trust_reason.replace(/[<>&]/g, "");
@@ -40,6 +40,7 @@ async function generatePreview(copy: { headline: string; subheadline: string; tr
               ? "<circle cx='940' cy='450' r='240' fill='rgba(148,163,184,0.18)'/><circle cx='940' cy='450' r='110' fill='rgba(248,250,252,0.18)'/>"
               : "<rect x='760' y='250' width='340' height='420' rx='26' fill='rgba(15,23,42,0.06)'/>";
 
+  const topLabel = language.toLowerCase().includes("es") ? "Educación financiera" : "Financial Education";
   const svg = `<svg xmlns='http://www.w3.org/2000/svg' width='1254' height='1254'>
       <defs>
         <linearGradient id='g' x1='0' y1='0' x2='1' y2='1'>
@@ -50,7 +51,7 @@ async function generatePreview(copy: { headline: string; subheadline: string; tr
       <rect width='1254' height='1254' fill='url(#g)'/>
       <rect x='64' y='64' width='1126' height='1126' rx='36' fill='rgba(248,250,252,0.95)'/>
       ${heroLayer}
-      <text x='120' y='168' font-size='30' font-family='Inter, Arial' fill='#0f172a'>Financial Education</text>
+      <text x='120' y='168' font-size='30' font-family='Inter, Arial' fill='#0f172a'>${topLabel}</text>
       <foreignObject x='120' y='220' width='960' height='220'>
         <div xmlns='http://www.w3.org/1999/xhtml' style='font-family:Inter,Arial;font-size:72px;font-weight:700;line-height:1.08;color:#0f172a;'>${headline}</div>
       </foreignObject>
@@ -86,7 +87,7 @@ export async function POST(req: NextRequest) {
       if (bias) designPrompt.prompt = `${designPrompt.prompt}. Reinforce winning pattern: ${bias.headline_style || "clear trusted hook"}.`;
       if (avoid?.avoid_next_time) designPrompt.negative_prompt = `${designPrompt.negative_prompt}, avoid ${avoid.avoid_next_time}`;
       const layoutValidation = validatePosterLayout(copy);
-      let previewUrl = await generatePreview(copy, composition.layout_type);
+      let previewUrl = await generatePreview(copy, composition.layout_type, parsed.language);
       let score = scoreCreative(copy, designPrompt, parsed.country);
       let status: BatchCreativeItem["status"] = layoutValidation.valid ? "ready" : "needs_fix";
       let reason = layoutValidation.reason;
@@ -98,7 +99,7 @@ export async function POST(req: NextRequest) {
           subheadline: copy.subheadline.slice(0, 80),
           cta: copy.cta.split(" ").slice(0, 4).join(" ")
         });
-        previewUrl = await generatePreview(repairedCopy, composition.layout_type);
+        previewUrl = await generatePreview(repairedCopy, composition.layout_type, parsed.language);
         score = scoreCreative(repairedCopy, designPrompt, parsed.country);
         const secondCheck = validatePosterLayout(repairedCopy);
         status = secondCheck.valid ? "ready" : "needs_fix";
