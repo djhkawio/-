@@ -1,0 +1,14 @@
+{
+  "country": "Argentina",
+  "goal": "Lead education",
+  "requested_variants": 5,
+  "selected_templates": [
+    "editorial-split",
+    "story-frame",
+    "trust-infographic",
+    "market-brief",
+    "premium-minimal"
+  ],
+  "quality_threshold": 76,
+  "disclaimer": "Educational content only. Not financial advice. Results are not guaranteed."
+}
