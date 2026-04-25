@@ -260,12 +260,13 @@ export default function Home() {
   };
 
   const generateImageForCard = async (item: BatchCreativeItem) => {
-    const res = await fetch("/api/generate-image", {
+    const res = await fetch("/api/generate-final-poster", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         prompt: item.design_prompt.prompt,
-        negative_prompt: item.design_prompt.negative_prompt
+        negativePrompt: item.design_prompt.negative_prompt,
+        textOverlay: item.design_prompt.text_overlay
       })
     });
     const data = await res.json();
@@ -545,7 +546,7 @@ export default function Home() {
                 <button type="button" className="rounded-full border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700" onClick={regeneratePromptForCard}>Regenerate Prompt</button>
                 <button type="button" className="rounded-full border border-emerald-300 bg-emerald-50 px-3 py-1.5 text-xs font-medium text-emerald-700" onClick={() => saveCreativeFeedback("like", item)}>Like</button>
                 <button type="button" className="rounded-full border border-rose-300 bg-rose-50 px-3 py-1.5 text-xs font-medium text-rose-700" onClick={() => saveCreativeFeedback("rejected", item)}>Reject</button>
-                <button type="button" disabled={!(item.status === "ready" && item.quality_score.overall_score >= 8)} className="rounded-full border border-indigo-300 bg-indigo-50 px-3 py-1.5 text-xs font-medium text-indigo-700 disabled:opacity-50" onClick={() => saveCreativeFeedback("winner", item)}>Mark Winner</button>
+                <button type="button" disabled={!(item.status === "ready" && item.quality_score.overall_score >= 8 && item.generated_image_result)} className="rounded-full border border-indigo-300 bg-indigo-50 px-3 py-1.5 text-xs font-medium text-indigo-700 disabled:opacity-50" onClick={() => saveCreativeFeedback("winner", item)}>Mark Winner</button>
                 <button type="button" disabled={!item.generated_image_result} className="rounded-full border border-slate-400 bg-slate-100 px-3 py-1.5 text-xs font-medium text-slate-700 disabled:opacity-50" onClick={() => exportCreativePng(item)}>Export PNG</button>
               </div>
               <details className="mt-2 text-xs text-slate-600">
