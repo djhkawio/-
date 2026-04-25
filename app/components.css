@@ -1,0 +1,71 @@
+.input {
+  @apply w-full rounded-md border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/30;
+}
+
+.poster-frame {
+  @apply space-y-3 rounded-2xl border p-3 shadow-lg;
+  background: linear-gradient(165deg, rgba(15, 23, 42, 0.08), rgba(148, 163, 184, 0.05));
+  border-color: rgba(148, 163, 184, 0.35);
+}
+
+.poster-meta {
+  @apply flex items-center justify-between text-xs font-medium text-slate-600;
+}
+
+.poster-chip {
+  @apply rounded-full px-2 py-1 text-[11px] font-semibold uppercase tracking-wide;
+  background: rgba(15, 23, 42, 0.06);
+  color: #0f172a;
+}
+
+.poster-canvas {
+  @apply h-auto w-full rounded-xl border;
+  border-color: rgba(148, 163, 184, 0.35);
+  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.2);
+}
+
+.poster-download {
+  @apply w-full rounded-md bg-brand-700 px-3 py-2 text-sm font-medium text-white transition hover:bg-brand-900;
+}
+
+.poster-bank-trust .poster-chip {
+  background: rgba(30, 64, 175, 0.13);
+  color: #1e3a8a;
+}
+
+.poster-data-report .poster-chip {
+  background: rgba(8, 145, 178, 0.14);
+  color: #0e7490;
+}
+
+.poster-learning-steps .poster-chip {
+  background: rgba(14, 116, 144, 0.14);
+  color: #155e75;
+}
+
+.poster-market-brief .poster-chip {
+  background: rgba(79, 70, 229, 0.13);
+  color: #3730a3;
+}
+
+.poster-premium-minimal .poster-chip {
+  background: rgba(71, 85, 105, 0.14);
+  color: #1e293b;
+}
+
+
+.poster-actions {
+  @apply grid grid-cols-2 gap-2;
+}
+
+.poster-feedback {
+  @apply rounded-md px-3 py-2 text-sm font-medium transition;
+}
+
+.poster-feedback.like {
+  @apply border border-emerald-300 bg-emerald-50 text-emerald-700 hover:bg-emerald-100;
+}
+
+.poster-feedback.reject {
+  @apply border border-rose-300 bg-rose-50 text-rose-700 hover:bg-rose-100;
+}
