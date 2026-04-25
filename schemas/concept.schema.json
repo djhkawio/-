@@ -1,0 +1,50 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "CreativeConcept",
+  "type": "object",
+  "required": [
+    "concept_name",
+    "country",
+    "language",
+    "audience",
+    "hook_angle",
+    "headline",
+    "subheadline",
+    "benefits",
+    "cta",
+    "disclaimer",
+    "palette",
+    "layout_template",
+    "visual_direction",
+    "avoid",
+    "quality_score"
+  ],
+  "properties": {
+    "concept_name": { "type": "string" },
+    "country": { "type": "string" },
+    "language": { "type": "string" },
+    "audience": { "type": "string" },
+    "hook_angle": { "type": "string" },
+    "headline": { "type": "string" },
+    "subheadline": { "type": "string" },
+    "benefits": { "type": "array", "items": { "type": "string" }, "minItems": 3, "maxItems": 3 },
+    "cta": { "type": "string" },
+    "disclaimer": { "type": "string" },
+    "palette": { "type": "string" },
+    "layout_template": { "type": "string" },
+    "visual_direction": { "type": "string" },
+    "avoid": { "type": "array", "items": { "type": "string" } },
+    "quality_score": {
+      "type": "object",
+      "properties": {
+        "localized_language": { "type": "number" },
+        "click_motivation": { "type": "number" },
+        "trust_signal": { "type": "number" },
+        "compliance_safety": { "type": "number" },
+        "mobile_readability": { "type": "number" },
+        "visual_quality_potential": { "type": "number" },
+        "distinction": { "type": "number" }
+      }
+    }
+  }
+}
