@@ -36,18 +36,24 @@ const MEMORY_KEY = "poster.preference.memory.v1";
 const FEEDBACK_PATTERN_KEY = "creative.os.feedback.pattern.v1";
 
 type FeedbackPattern = {
-  type: "winner" | "rejected";
   country: string;
+  language: string;
   topic: string;
-  headline_style: string;
+  campaign_goal: string;
+  headline: string;
   layout_style: string;
   color_style: string;
-  visual_theme: string;
-  conversion_angle: string;
-  why_it_worked?: string;
-  problem?: string;
-  avoid_next_time?: string;
-  createdAt: number;
+  design_direction: string;
+  score: number;
+  feedback_type: "like" | "dislike" | "winner" | "rejected";
+  user_note: string;
+  created_at: string;
+  prompt: string;
+  negative_prompt: string;
+  winning_art_direction?: string;
+  winning_layout?: string;
+  winning_copy_style?: string;
+  rejected_visual_pattern?: string;
 };
 
 function emptyWeights(): PreferenceWeights {
@@ -192,12 +198,19 @@ export default function Home() {
         country: form.country,
         language,
         topic: form.theme,
+        target_age: form.age,
+        ad_objective: form.goal,
         reference_image: imageBase64,
         platform,
         conversion_path: conversionPath,
         risk_level: riskLevel,
         user_notes: userNotes,
-        feedback_patterns: patterns
+        feedback_patterns: patterns.map((p) => ({
+          type: p.feedback_type === "winner" || p.feedback_type === "like" ? "winner" : "rejected",
+          layout_style: p.layout_style,
+          headline_style: p.headline,
+          avoid_next_time: p.user_note
+        }))
       })
     });
     const data = await res.json();
@@ -207,25 +220,57 @@ export default function Home() {
     setRecommendedIds(data.recommended_ids ?? []);
   };
 
-  const markPattern = (type: "winner" | "rejected", item: BatchCreativeItem) => {
-    const reason = window.prompt(type === "winner" ? "Why it worked?" : "Main problem to avoid next time?");
+  const saveCreativeFeedback = (type: FeedbackPattern["feedback_type"], item: BatchCreativeItem) => {
+    const note = window.prompt("Optional note for this feedback") || "";
     const entry: FeedbackPattern = {
-      type,
       country: form.country,
+      language,
       topic: form.theme,
-      headline_style: item.copy_version.type,
+      campaign_goal: form.goal,
+      headline: item.copy_version.headline,
       layout_style: item.design_prompt.design_version,
       color_style: "restrained institutional",
-      visual_theme: item.design_prompt.layout_notes,
-      conversion_angle: item.copy_version.learning_motivation,
-      why_it_worked: type === "winner" ? (reason || "High trust + clear motivation") : undefined,
-      problem: type === "rejected" ? (reason || "Weak conversion signal") : undefined,
-      avoid_next_time: type === "rejected" ? (reason || "avoid low-clarity structure") : undefined,
-      createdAt: Date.now()
+      design_direction: item.design_prompt.design_direction,
+      score: item.quality_score.overall_score,
+      feedback_type: type,
+      user_note: note,
+      created_at: new Date().toISOString(),
+      prompt: item.design_prompt.prompt,
+      negative_prompt: item.design_prompt.negative_prompt,
+      winning_art_direction: type === "winner" || type === "like" ? item.art_direction : undefined,
+      winning_layout: type === "winner" || type === "like" ? item.layout_type : undefined,
+      winning_copy_style: type === "winner" || type === "like" ? item.copy_version.type : undefined,
+      rejected_visual_pattern: type === "rejected" || type === "dislike" ? item.art_direction : undefined
     };
     const next = [...patterns, entry].slice(-400);
     setPatterns(next);
     localStorage.setItem(FEEDBACK_PATTERN_KEY, JSON.stringify(next));
+  };
+
+  const scopedPatterns = useMemo(() => patterns.filter((p) => p.country === form.country && p.topic === form.theme), [patterns, form.country, form.theme]);
+  const winningPatterns = scopedPatterns.filter((p) => p.feedback_type === "winner" || p.feedback_type === "like");
+  const rejectedPatterns = scopedPatterns.filter((p) => p.feedback_type === "rejected" || p.feedback_type === "dislike");
+
+  const exportCreativePng = (item: BatchCreativeItem) => {
+    const link = document.createElement("a");
+    link.href = item.generated_image_result || item.preview_url;
+    link.download = `creative-${item.id}.svg`;
+    link.click();
+  };
+
+  const generateImageForCard = async (item: BatchCreativeItem) => {
+    const res = await fetch("/api/generate-image", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        prompt: item.design_prompt.prompt,
+        negative_prompt: item.design_prompt.negative_prompt
+      })
+    });
+    const data = await res.json();
+    if (data?.image_url) {
+      setCreativeBatch((prev) => prev.map((v) => (v.id === item.id ? { ...v, generated_image_result: data.image_url } : v)));
+    }
   };
 
   const handleImportCsv = async () => {
@@ -287,7 +332,7 @@ export default function Home() {
               e.preventDefault();
               setBaseAd(undefined);
               setSubmitted({ ...form, quantity: 5 });
-              void generateFromApi({ ...form, quantity: 5 });
+              void runCreativeOS();
             }}
           >
             <Field label="国家">
@@ -409,6 +454,39 @@ export default function Home() {
             </div>
           )}
 
+          {creativeBatch.length > 0 && (
+            <div className="sm:col-span-2 rounded-3xl border border-slate-200 bg-white p-5">
+              <p className="text-base font-semibold text-slate-900">Copy Generator</p>
+              <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                {creativeBatch.map((item) => (
+                  <div key={`${item.id}-copy`} className="rounded-2xl border border-slate-200 bg-slate-50 p-3 text-xs text-slate-700">
+                    <p className="font-semibold">{item.copy_version.type}</p>
+                    <p className="mt-1 font-medium text-slate-900">{item.copy_version.headline}</p>
+                    <p>{item.copy_version.subheadline}</p>
+                    <p className="mt-1">Trust: {item.copy_version.trust_reason}</p>
+                    <p>Motivation: {item.copy_version.learning_motivation}</p>
+                    <p>CTA: {item.copy_version.cta}</p>
+                    <p className="text-[11px] text-slate-500">{item.copy_version.disclaimer}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {creativeBatch.length > 0 && (
+            <div className="sm:col-span-2 rounded-3xl border border-slate-200 bg-white p-5">
+              <p className="text-base font-semibold text-slate-900">Design Prompt Generator</p>
+              <div className="mt-3 space-y-2">
+                {creativeBatch.map((item) => (
+                  <details key={`${item.id}-prompt`} className="rounded-2xl border border-slate-200 bg-slate-50 p-3 text-xs text-slate-700">
+                    <summary className="cursor-pointer font-semibold">{item.design_prompt.design_direction}</summary>
+                    <pre className="mt-2 overflow-auto whitespace-pre-wrap">{JSON.stringify(item.design_prompt, null, 2)}</pre>
+                  </details>
+                ))}
+              </div>
+            </div>
+          )}
+
           {referenceSummary && (
             <div className="sm:col-span-2 rounded-3xl border border-slate-200 bg-white p-5 text-sm text-slate-700">
               <p className="text-base font-semibold text-slate-900">Reference Image Analyzer</p>
@@ -418,16 +496,42 @@ export default function Home() {
 
           {creativeBatch.map((item) => (
             <article key={item.id} className="rounded-3xl border border-slate-200 bg-white p-4 shadow-[0_10px_30px_rgba(15,23,42,0.05)]">
-              <img src={item.image_url} alt={item.copy_version.headline} className="h-auto w-full rounded-xl border border-slate-200" />
+              <img src={item.generated_image_result || item.preview_url} alt={item.copy_version.headline} className="h-auto w-full rounded-xl border border-slate-200" />
               <div className="mt-3 space-y-2 text-xs text-slate-600">
-                <p className="font-semibold text-slate-900">{item.copy_version.type} · {item.design_prompt.design_version}</p>
-                <p className="line-clamp-2">{item.copy_version.headline}</p>
-                <p>Score: <span className="font-semibold text-slate-900">{item.quality_score.overall_score.toFixed(1)}</span> / 10 {recommendedIds.includes(item.id) ? "⭐ Recommended" : ""}</p>
-                <p>Status: {item.status}</p>
+                <p className="font-semibold text-slate-900">{item.design_prompt.design_direction}</p>
+                <p className="font-medium text-slate-900">{item.copy_version.headline}</p>
+                <p>art_direction: <span className="font-semibold">{item.art_direction}</span></p>
+                <p>layout_type: <span className="font-semibold">{item.layout_type}</span></p>
+                <p>visual_hook: {item.visual_hook_text}</p>
+                <p>why_this_design_works: {item.why_this_design_works}</p>
+                <div className="rounded-lg bg-slate-50 p-2">
+                  <p className="font-semibold text-slate-800">Prompt Studio</p>
+                  <p className="mt-1 max-h-24 overflow-auto text-[11px]">{item.design_prompt.prompt}</p>
+                  <p className="mt-1 text-[11px] text-slate-500">Negative: {item.design_prompt.negative_prompt}</p>
+                  <button type="button" className="mt-2 rounded-full border border-slate-300 px-2 py-1 text-[11px] font-medium" onClick={() => navigator.clipboard.writeText(item.design_prompt.prompt)}>Copy Prompt</button>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <span className={`rounded-full px-2 py-1 text-[11px] font-semibold ${item.quality_score.overall_score < 8 ? "bg-amber-100 text-amber-700" : "bg-emerald-100 text-emerald-700"}`}>overall {item.quality_score.overall_score.toFixed(1)}</span>
+                  <span className={`rounded-full px-2 py-1 text-[11px] font-semibold ${item.quality_score.compliance_safety < 9 ? "bg-rose-100 text-rose-700" : "bg-slate-100 text-slate-700"}`}>compliance {item.quality_score.compliance_safety}</span>
+                  <span className="rounded-full bg-slate-100 px-2 py-1 text-[11px] font-semibold text-slate-700">mobile {item.quality_score.mobile_readability}</span>
+                  <span className="rounded-full bg-slate-100 px-2 py-1 text-[11px] font-semibold text-slate-700">visual hook {item.quality_score.visual_hook}</span>
+                  <span className="rounded-full bg-slate-100 px-2 py-1 text-[11px] font-semibold text-slate-700">premium {item.quality_score.premium_texture}</span>
+                  <span className="rounded-full bg-slate-100 px-2 py-1 text-[11px] font-semibold text-slate-700">balance {item.quality_score.composition_balance}</span>
+                </div>
+                {item.quality_score.mobile_readability < 8 && <p className="rounded-lg bg-amber-50 p-2 text-amber-700">Text may be too small for mobile.</p>}
+                {item.quality_score.design_texture < 8 && <p className="rounded-lg bg-amber-50 p-2 text-amber-700">Needs more premium institutional texture.</p>}
+                {!!item.quality_score.problems.length && <p className="rounded-lg bg-rose-50 p-2 text-rose-700">Compliance issues: {item.quality_score.problems.join(", ")}</p>}
+                <p>Status: <span className={`font-semibold ${item.status === "ready" ? "text-emerald-700" : item.status === "needs_fix" ? "text-amber-700" : "text-rose-700"}`}>{item.status}</span> · reason: {item.reason} · score: {item.quality_score.overall_score.toFixed(1)} {recommendedIds.includes(item.id) ? "⭐ Recommended" : ""}</p>
+                <p className="rounded-lg bg-slate-50 p-2 text-[11px]">Design explain: {item.design_explanation.visual_hook} · {item.design_explanation.reason} · risk: {item.design_explanation.risk}</p>
               </div>
               <div className="mt-3 grid grid-cols-2 gap-2">
-                <button type="button" className="rounded-full border border-emerald-300 bg-emerald-50 px-3 py-1.5 text-xs font-medium text-emerald-700" onClick={() => markPattern("winner", item)}>Mark Winner</button>
-                <button type="button" className="rounded-full border border-rose-300 bg-rose-50 px-3 py-1.5 text-xs font-medium text-rose-700" onClick={() => markPattern("rejected", item)}>Mark Rejected</button>
+                <button type="button" className="rounded-full bg-slate-900 px-3 py-1.5 text-xs font-medium text-white" onClick={() => generateImageForCard(item)}>Generate Image</button>
+                <button type="button" className="rounded-full border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700" onClick={runCreativeOS}>Regenerate</button>
+                <button type="button" className="rounded-full border border-emerald-300 bg-emerald-50 px-3 py-1.5 text-xs font-medium text-emerald-700" onClick={() => saveCreativeFeedback("like", item)}>Like</button>
+                <button type="button" className="rounded-full border border-rose-300 bg-rose-50 px-3 py-1.5 text-xs font-medium text-rose-700" onClick={() => saveCreativeFeedback("rejected", item)}>Reject</button>
+                <button type="button" disabled={!(item.status === "ready" && item.quality_score.overall_score >= 8)} className="rounded-full border border-indigo-300 bg-indigo-50 px-3 py-1.5 text-xs font-medium text-indigo-700 disabled:opacity-50" onClick={() => saveCreativeFeedback("winner", item)}>Mark Winner</button>
+                <button type="button" className="rounded-full border border-amber-300 bg-amber-50 px-3 py-1.5 text-xs font-medium text-amber-700" onClick={() => saveCreativeFeedback("winner", item)}>Save Pattern</button>
+                <button type="button" className="rounded-full border border-slate-400 bg-slate-100 px-3 py-1.5 text-xs font-medium text-slate-700" onClick={() => exportCreativePng(item)}>Export PNG</button>
               </div>
               <details className="mt-2 text-xs text-slate-600">
                 <summary>View prompt + scoring details</summary>
@@ -435,6 +539,35 @@ export default function Home() {
               </details>
             </article>
           ))}
+
+          <div className="sm:col-span-2 grid gap-4 lg:grid-cols-2">
+            <section className="rounded-3xl border border-slate-200 bg-white p-5">
+              <h3 className="text-base font-semibold text-slate-900">Winning Pattern Library</h3>
+              <ul className="mt-3 space-y-2 text-xs text-slate-700">
+                {winningPatterns.length ? winningPatterns.slice(-8).map((p, i) => (
+                  <li key={`${p.created_at}-${i}`} className="rounded-xl bg-emerald-50 p-2">
+                    <p className="font-semibold">{p.headline}</p>
+                    <p>{p.layout_style} · {p.color_style}</p>
+                    <p>{p.design_direction}</p>
+                    <p>{p.user_note || "Reason not provided"}</p>
+                  </li>
+                )) : <li className="text-slate-500">No winning patterns yet.</li>}
+              </ul>
+            </section>
+
+            <section className="rounded-3xl border border-slate-200 bg-white p-5">
+              <h3 className="text-base font-semibold text-slate-900">Rejected Pattern Panel</h3>
+              <ul className="mt-3 space-y-2 text-xs text-slate-700">
+                {rejectedPatterns.length ? rejectedPatterns.slice(-8).map((p, i) => (
+                  <li key={`${p.created_at}-${i}`} className="rounded-xl bg-rose-50 p-2">
+                    <p className="font-semibold">{p.layout_style}</p>
+                    <p>{p.color_style} · {p.design_direction}</p>
+                    <p>{p.user_note || "No rejection reason provided."}</p>
+                  </li>
+                )) : <li className="text-slate-500">No rejected patterns yet.</li>}
+              </ul>
+            </section>
+          </div>
 
           {variants.map((variant, idx) => (
             <PosterCanvas
