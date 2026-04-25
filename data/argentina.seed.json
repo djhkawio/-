@@ -1,0 +1,11 @@
+{
+  "country": "Argentina",
+  "locale": "es-AR",
+  "expressions": ["querés", "aprendé", "entendé", "empezá"],
+  "sample_goals": ["Lead education", "Webinar signups", "Guide opt-in"],
+  "sensitive_points": [
+    "No promesas de rentabilidad",
+    "No nombres de firmas específicas",
+    "No lenguaje de asesoría personalizada"
+  ]
+}
