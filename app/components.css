@@ -1,15 +1,16 @@
 .input {
-  @apply w-full rounded-md border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/30;
+  @apply w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm shadow-sm focus:border-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-300;
 }
 
 .poster-frame {
-  @apply space-y-3 rounded-2xl border p-3 shadow-lg;
-  background: linear-gradient(165deg, rgba(15, 23, 42, 0.08), rgba(148, 163, 184, 0.05));
-  border-color: rgba(148, 163, 184, 0.35);
+  @apply space-y-4 rounded-3xl border p-4;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(248, 250, 252, 0.96));
+  border-color: rgba(148, 163, 184, 0.24);
+  box-shadow: 0 24px 70px rgba(15, 23, 42, 0.10);
 }
 
 .poster-meta {
-  @apply flex items-center justify-between text-xs font-medium text-slate-600;
+  @apply flex items-center justify-between gap-2 text-xs font-medium text-slate-600;
 }
 
 .poster-chip {
@@ -20,35 +21,35 @@
 
 .poster-canvas {
   @apply h-auto w-full rounded-xl border;
-  border-color: rgba(148, 163, 184, 0.35);
-  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.2);
+  border-color: rgba(148, 163, 184, 0.25);
+  box-shadow: 0 18px 46px rgba(15, 23, 42, 0.14);
 }
 
 .poster-download {
-  @apply w-full rounded-md bg-brand-700 px-3 py-2 text-sm font-medium text-white transition hover:bg-brand-900;
+  @apply w-full rounded-full bg-slate-900 px-3 py-2.5 text-sm font-medium text-white transition hover:bg-slate-700;
 }
 
-.poster-bank-trust .poster-chip {
+.poster-trust_framework .poster-chip {
   background: rgba(30, 64, 175, 0.13);
   color: #1e3a8a;
 }
 
-.poster-data-report .poster-chip {
+.poster-data_report_lite .poster-chip {
   background: rgba(8, 145, 178, 0.14);
   color: #0e7490;
 }
 
-.poster-learning-steps .poster-chip {
+.poster-beginner_clarity .poster-chip {
   background: rgba(14, 116, 144, 0.14);
   color: #155e75;
 }
 
-.poster-market-brief .poster-chip {
+.poster-market_brief .poster-chip {
   background: rgba(79, 70, 229, 0.13);
   color: #3730a3;
 }
 
-.poster-premium-minimal .poster-chip {
+.poster-premium_minimal .poster-chip {
   background: rgba(71, 85, 105, 0.14);
   color: #1e293b;
 }
@@ -59,7 +60,7 @@
 }
 
 .poster-feedback {
-  @apply rounded-md px-3 py-2 text-sm font-medium transition;
+  @apply rounded-full px-3 py-2 text-sm font-medium transition;
 }
 
 .poster-feedback.like {

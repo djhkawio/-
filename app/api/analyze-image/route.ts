@@ -9,6 +9,29 @@ type AnalysisResult = {
   tone: string;
 };
 
+type ReferenceAnalysis = {
+  visual_structure: string;
+  copy_structure: string;
+  strengths: string[];
+  weaknesses: string[];
+  adaptation_advice: string[];
+  risk_notes: string[];
+};
+
+function fallbackReferenceAnalysis(country: string): ReferenceAnalysis {
+  const isArgentina = country.toLowerCase().includes("argentina");
+  return {
+    visual_structure: "top headline + middle trust bullets + bottom CTA",
+    copy_structure: "hook -> trust reason -> learning motivation -> safe CTA",
+    strengths: ["mobile readable hierarchy", "clear educational CTA"],
+    weaknesses: ["too generic locale cues", "insufficient trust proof density"],
+    adaptation_advice: isArgentina
+      ? ["use Argentine Spanish phrasing", "avoid US-style aggressive claims", "add local practical context"]
+      : ["increase local language cues", "keep institutional restrained style"],
+    risk_notes: ["avoid guaranteed outcomes", "avoid explicit income promise"]
+  };
+}
+
 function fallbackResult(country: string): AnalysisResult {
   const spanish = country.toLowerCase().includes("argentina");
   const romanian = country.toLowerCase().includes("romania") || country.toLowerCase().includes("românia");
@@ -59,10 +82,10 @@ export async function POST(req: NextRequest) {
 
     const apiKey = process.env.OPENAI_API_KEY;
     if (!apiKey) {
-      return NextResponse.json({ result: fallbackResult(country || "") });
+      return NextResponse.json({ result: fallbackResult(country || ""), reference_analysis: fallbackReferenceAnalysis(country || "") });
     }
 
-    const prompt = `Analyze this ad-like reference image and return strict JSON with keys: headline, subline, bullets(3 strings), cta, angle(question|beginner|curiosity|mistake|opportunity), tone. Avoid any guaranteed return language, download wording, or institution endorsements.`;
+    const prompt = `Analyze this ad-like reference image and return strict JSON with keys: headline, subline, bullets(3 strings), cta, angle(question|beginner|curiosity|mistake|opportunity), tone, reference_analysis{visual_structure, copy_structure, strengths[], weaknesses[], adaptation_advice[], risk_notes[]}. Avoid guaranteed return language, download wording, or institution endorsements.`;
 
     const response = await fetch("https://api.openai.com/v1/responses", {
       method: "POST",
@@ -96,10 +119,12 @@ export async function POST(req: NextRequest) {
     }
 
     if (!parsed) {
-      return NextResponse.json({ result: fallbackResult(country || "") });
+      return NextResponse.json({ result: fallbackResult(country || ""), reference_analysis: fallbackReferenceAnalysis(country || "") });
     }
 
-    return NextResponse.json({ result: parsed });
+    const referenceAnalysis = ((parsed as unknown as { reference_analysis?: ReferenceAnalysis }).reference_analysis)
+      || fallbackReferenceAnalysis(country || "");
+    return NextResponse.json({ result: parsed, reference_analysis: referenceAnalysis });
   } catch {
     return NextResponse.json({ error: "Analyze failed" }, { status: 500 });
   }

@@ -1,26 +1,50 @@
-# 自动广告海报生成网页工具（MVP）
+# AI Ad Creative Generator (Financial Education)
 
-## 技术栈
-- Next.js (App Router)
-- Tailwind CSS
-- Canvas 模板渲染（无复杂 AI 图片 API）
+Senior-creative-style ad generator for mobile-first financial education campaigns.
 
-## 功能覆盖
-1. 输入国家、广告主题、目标年龄、广告风格、输出数量（MVP 固定 5）。
-2. 根据国家映射本地语言（中文/日文/英文，其他默认英文）自动生成文案。
-3. 海报固定尺寸 1254x1254。
-4. 风格偏移动端优先、稳重、专业、信任感（金融咨询视觉）。
-5. 限制内容：
-   - 不使用真人照片（纯图形模板）
-   - 文案过滤收益保证/下载PDF/CFA 等敏感词
-6. 底部默认免责声明：
-   - Educational content only. Not financial advice. Results are not guaranteed.
-7. 每次生成 5 个版本。
-8. 支持每个版本导出 PNG。
+## 4-Layer Generation Pipeline
+1. **Strategy Layer**: country, audience age, campaign goal, trust/compliance boundaries
+2. **Copy Layer**: localized persuasive hooks/subheads/benefits/CTA (not raw topic filling)
+3. **Design Layer**: layout + visual direction mapping (8 templates)
+4. **Self-check Layer**: quality scoring and auto-rewrite for weak concepts
 
-## 本地运行
+## Core Features
+- 1254x1254 premium posters (mobile-first)
+- 5 distinct concept batch generation
+- Argentina-first localization (voseo tone: *querés, aprendé, entendé, empezá*)
+- Creative Remix from reference image
+- CSV performance import + scoring + weight updates
+- Like/Reject preference learning
+- Public trend scanner (reference only)
+- Structured concept JSON output for renderer
+
+## APIs
+- `POST /api/analyze-image`
+- `POST /api/trend-scan`
+- `POST /api/generate-concepts`
+
+## Important Safety Rules
+- Educational framing only
+- No guaranteed returns / wealth claims
+- No specific firms / CFA / portfolio manager
+- No aggressive download CTA
+- Disclaimer always included:
+  `Educational content only. Not financial advice. Results are not guaranteed.`
+
+## Project Structure
+- `app/page.tsx` main UI
+- `components/PosterCanvas.tsx` render + export PNG
+- `lib/poster.ts` strategy+copy+design+self-check orchestration
+- `lib/countryStrategy.ts` country language/culture/compliance hints
+- `lib/performanceLearning.ts` CSV learning engine
+- `prompts/*` prompt architecture
+- `schemas/concept.schema.json` concept contract
+- `data/argentina.seed.json` market seed
+- `data/userProfile.json` default creative director profile
+- `examples/output.config.json` output example
+
+## Run
 ```bash
 npm install
 npm run dev
 ```
-打开 `http://localhost:3000`。

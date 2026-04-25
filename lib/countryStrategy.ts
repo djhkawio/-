@@ -37,16 +37,16 @@ export const countryStrategies: Record<string, CountryStrategy> = {
 export const multilingualHookLibrary: Record<"es" | "ro", Record<AdAngle, string[]>> = {
   es: {
     question: [
-      "¿Sabes cuál es la forma más clara de empezar con {theme}?",
-      "¿Qué cambia cuando entiendes {theme} paso a paso?"
+      "¿Querés una forma más clara de empezar con {theme}?",
+      "¿Qué cambia cuando entendés {theme} paso a paso?"
     ],
     beginner: [
       "{theme}: guía de inicio para avanzar con confianza",
-      "Comienza con {theme} de forma simple y práctica"
+      "Empezá con {theme} de forma simple y práctica"
     ],
     curiosity: [
       "El detalle de {theme} que casi nadie explica bien",
-      "¿Qué parte de {theme} suele pasar desapercibida?"
+      "¿Qué parte de {theme} suele pasarse por alto?"
     ],
     mistake: [
       "Error común en {theme}: saltar la base",
@@ -54,7 +54,7 @@ export const multilingualHookLibrary: Record<"es" | "ro", Record<AdAngle, string
     ],
     opportunity: [
       "Una oportunidad real para aprender {theme} con calma",
-      "Transforma tu base de {theme} con un enfoque claro"
+      "Mejorá tu base de {theme} con un enfoque claro"
     ]
   },
   ro: {
@@ -99,4 +99,37 @@ export function weightedAnglePick(weights: Record<AdAngle, number>): AdAngle {
   }
 
   return entries[0][0];
+}
+
+
+export type CountryContext = {
+  locale: "es" | "ro" | "en";
+  culturalExpression: string;
+  sensitivePoints: string[];
+};
+
+export function getCountryContext(countryInput: string): CountryContext {
+  const normalized = countryInput.trim().toLowerCase();
+
+  if (normalized.includes("argentina")) {
+    return {
+      locale: "es",
+      culturalExpression: "claro, cercano y educativo",
+      sensitivePoints: ["no promesas de rentabilidad", "no instituciones específicas", "no lenguaje agresivo"]
+    };
+  }
+
+  if (normalized.includes("romania") || normalized.includes("românia")) {
+    return {
+      locale: "ro",
+      culturalExpression: "clar, structurat și prudent",
+      sensitivePoints: ["fără promisiuni de câștig", "fără instituții specifice", "fără exagerări"]
+    };
+  }
+
+  return {
+    locale: "en",
+    culturalExpression: "professional, concise, trust-first",
+    sensitivePoints: ["no guaranteed returns", "no specific institutions", "no overpromising"]
+  };
 }

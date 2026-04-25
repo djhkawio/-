@@ -1,15 +1,17 @@
-import { getCountryStrategy, multilingualHookLibrary, weightedAnglePick } from "@/lib/countryStrategy";
+import { getCountryContext, getCountryStrategy, multilingualHookLibrary, weightedAnglePick } from "@/lib/countryStrategy";
+import { userProfile } from "@/lib/userProfile";
 
 export type FormData = {
   country: string;
   theme: string;
   age: string;
   style: string;
+  goal: string;
   quantity: number;
 };
 
 export type AdAngle = "question" | "beginner" | "curiosity" | "mistake" | "opportunity";
-export type DesignTemplate = "bank-trust" | "data-report" | "learning-steps" | "market-brief" | "premium-minimal";
+export type DesignTemplate = "beginner_clarity" | "trust_framework" | "market_brief" | "premium_minimal" | "educational_checklist" | "mistake_prevention" | "opportunity_awareness" | "data_report_lite";
 
 export type PosterCopy = {
   language: string;
@@ -26,6 +28,10 @@ export type PosterVariant = {
   designTemplate: DesignTemplate;
   paletteKey: string;
   layoutStyle: string;
+  conceptName: string;
+  visualDirection: string;
+  textDensity: "low" | "medium";
+  ctaStyle: "soft_education" | "guided_learning";
   palette: {
     bg: string;
     panel: string;
@@ -45,6 +51,35 @@ export type PreferenceWeights = {
   structure: Record<string, number>;
 };
 
+
+
+export type ConceptQualityScore = {
+  localized_language: number;
+  click_motivation: number;
+  trust_signal: number;
+  compliance_safety: number;
+  mobile_readability: number;
+  visual_quality_potential: number;
+  distinction: number;
+};
+
+export type CreativeConcept = {
+  concept_name: string;
+  country: string;
+  language: string;
+  audience: string;
+  hook_angle: string;
+  headline: string;
+  subheadline: string;
+  benefits: [string, string, string];
+  cta: string;
+  disclaimer: string;
+  palette: string;
+  layout_template: DesignTemplate;
+  visual_direction: string;
+  avoid: string[];
+  quality_score: ConceptQualityScore;
+};
 
 export type BaseAd = {
   headline: string;
@@ -68,6 +103,11 @@ export type PosterMetadata = {
   palette: string;
   layoutStyle: string;
   structure: string;
+  hook_type: string;
+  language_style: string;
+  text_density: string;
+  cta_style: string;
+  visual_direction: string;
 };
 
 type PreferenceFeedback = "like" | "reject";
@@ -76,18 +116,14 @@ export const PREFERENCE_WEIGHTS_KEY = "poster.preference.weights.v1";
 export const PREFERENCE_MEMORY_KEY = "poster.preference.memory.v1";
 
 export type PreferenceRecord = {
-  country: string;
-  angle: string;
-  hook: string;
-  designTemplate: string;
   type: PreferenceFeedback;
+  metadata: PosterMetadata;
   createdAt: number;
 };
 
 type LocaleCode = "en" | "zh" | "ja" | "fr" | "de" | "es" | "pt" | "ro" | "it" | "pl";
 
-const defaultDisclaimer =
-  "Educational content only. Not financial advice. Results are not guaranteed.";
+const defaultDisclaimer = userProfile.required.disclaimer;
 
 const forbidden = [
   /guaranteed return/gi,
@@ -100,11 +136,14 @@ const forbidden = [
 
 const adAngles: AdAngle[] = ["question", "beginner", "curiosity", "mistake", "opportunity"];
 const templates: DesignTemplate[] = [
-  "bank-trust",
-  "data-report",
-  "learning-steps",
-  "market-brief",
-  "premium-minimal"
+  "beginner_clarity",
+  "trust_framework",
+  "market_brief",
+  "premium_minimal",
+  "educational_checklist",
+  "mistake_prevention",
+  "opportunity_awareness",
+  "data_report_lite"
 ];
 
 const localeRules: Array<{ lang: LocaleCode; aliases: string[] }> = [
@@ -140,14 +179,146 @@ function detectLocale(countryInput: string): LocaleCode {
   return rule?.lang || "en";
 }
 
+
+function rewriteTopic(payload: FormData): string {
+  const topic = removeForbidden(sanitizeTheme(payload.theme || "Financial literacy")) || "Financial literacy";
+  const goal = (payload.goal || "Lead education").trim();
+  const country = payload.country.toLowerCase();
+
+  if (country.includes("argentina")) {
+    return `Aprendé ${topic} con enfoque práctico para ${goal.toLowerCase()}`;
+  }
+
+  if (country.includes("romania") || country.includes("românia")) {
+    return `Înțelege ${topic} prin pași simpli pentru ${goal.toLowerCase()}`;
+  }
+
+  return `Learn ${topic} with a practical ${goal.toLowerCase()} approach`;
+}
+
+function scoreCopyQuality(copy: PosterCopy): number {
+  let score = 60;
+  if (copy.hook.length > 24) score += 10;
+  if (copy.subline.length > 36) score += 10;
+  if (copy.bullets.length === 3) score += 8;
+  if (!/guaranteed|profit|download/i.test(`${copy.hook} ${copy.subline} ${copy.cta}`)) score += 8;
+  if (/learn|aprend|entend|educ/i.test(copy.cta)) score += 8;
+  return Math.min(100, score);
+}
+
+function rewriteLowScore(copy: PosterCopy): PosterCopy {
+  return {
+    ...copy,
+    hook: copy.hook.includes("?") ? copy.hook : `${copy.hook}?`,
+    subline: `${copy.subline} Clear, compliant, and beginner-friendly.`,
+    cta: /learn|aprend|entend|educ/i.test(copy.cta) ? copy.cta : "Learn how it works"
+  };
+}
+
+const directionLibrary = [
+  "Beginner Clarity",
+  "Trust Framework",
+  "Market Brief",
+  "Premium Minimal",
+  "Educational Checklist",
+  "Mistake Prevention",
+  "Opportunity Awareness",
+  "Data Report Lite"
+];
+
+function scoreConcept(copy: PosterCopy, distinction: number): ConceptQualityScore {
+  const localized = /querés|aprendé|entendé|empezá|aprende|learn|înțelege/i.test(copy.hook) ? 9 : 7;
+  const clickMotivation = copy.hook.includes("?") || copy.hook.length > 24 ? 9 : 7;
+  const trust = /clear|clar|confi|trust|educ/i.test(`${copy.subline} ${copy.bullets.join(" ")}`) ? 9 : 7;
+  const compliance = /guaranteed|rich quick|portfolio manager|cfa|download/i.test(`${copy.hook} ${copy.subline} ${copy.cta}`) ? 4 : 9;
+  const mobile = copy.hook.length <= 90 && copy.bullets.every((b) => b.length < 92) ? 9 : 7;
+  const visual = 8 + Math.min(2, distinction / 2);
+
+  return {
+    localized_language: localized,
+    click_motivation: clickMotivation,
+    trust_signal: trust,
+    compliance_safety: compliance,
+    mobile_readability: mobile,
+    visual_quality_potential: visual,
+    distinction
+  };
+}
+
+function improveConceptIfNeeded(copy: PosterCopy, score: ConceptQualityScore): PosterCopy {
+  const critical = Object.values(score).some((v) => v < 8);
+  if (!critical) return copy;
+  const improved = rewriteLowScore(copy);
+  return {
+    ...improved,
+    bullets: [
+      improved.bullets[0],
+      improved.bullets[1],
+      "Educational framing only, no guaranteed outcomes."
+    ]
+  };
+}
+
+function buildConceptJSON(
+  payload: FormData,
+  template: DesignTemplate,
+  direction: string,
+  adAngle: AdAngle,
+  copy: PosterCopy,
+  score: ConceptQualityScore,
+  paletteKey: string
+): CreativeConcept {
+  return {
+    concept_name: direction,
+    country: payload.country,
+    language: copy.language,
+    audience: payload.age,
+    hook_angle: adAngle,
+    headline: copy.hook,
+    subheadline: copy.subline,
+    benefits: copy.bullets,
+    cta: copy.cta,
+    disclaimer: copy.disclaimer,
+    palette: paletteKey,
+    layout_template: template,
+    visual_direction: `${direction} / mobile-first trust ad`,
+    avoid: [
+      "guaranteed return",
+      "get rich quick",
+      "specific investment firm",
+      "CFA",
+      "portfolio manager",
+      "download now"
+    ],
+    quality_score: score
+  };
+}
+
+export function generateConceptJSON(payload: FormData, preferences?: PreferenceWeights, baseAd?: BaseAd): CreativeConcept[] {
+  const variants = buildVariants(payload, preferences, baseAd);
+  return variants.map((variant, idx) => {
+    const score = scoreConcept(variant.copy, 8 + (idx % 3));
+    return buildConceptJSON(
+      payload,
+      variant.designTemplate,
+      directionLibrary[idx % directionLibrary.length],
+      variant.adAngle,
+      variant.copy,
+      score,
+      variant.paletteKey
+    );
+  });
+}
+
 function i18nCopy(lang: LocaleCode, payload: FormData, angle: AdAngle, idx: number, baseAd?: BaseAd): PosterCopy {
-  const safeTheme = removeForbidden(sanitizeTheme(baseAd?.headline || payload.theme || "Financial literacy")) || "Financial literacy";
+  const safeTheme = removeForbidden(baseAd?.headline || rewriteTopic(payload) || "Financial literacy") || "Financial literacy";
   const age = payload.age || "38-65";
   const style = removeForbidden(baseAd?.tone || payload.style || "Professional") || "Professional";
   const variant = String.fromCharCode(65 + idx);
   const baseSubline = removeForbidden(baseAd?.subline || "");
   const baseBullets = (baseAd?.bullets || []).map((b) => removeForbidden(b)).filter(Boolean);
   const baseCta = removeForbidden(baseAd?.cta || "");
+  const countryContext = getCountryContext(payload.country || "");
 
   if (lang === "es") {
     const strategy = getCountryStrategy(payload.country || "");
@@ -155,13 +326,13 @@ function i18nCopy(lang: LocaleCode, payload: FormData, angle: AdAngle, idx: numb
     const hookPool = multilingualHookLibrary.es[angle];
     const hook = hookPool[idx % hookPool.length].replace("{theme}", safeTheme);
     const ctas = strategy?.ctaStyle === "simple"
-      ? ["Ver ejemplo simple", "Comenzar ahora", "Aprende cómo funciona"]
-      : ["Aprende cómo funciona", "Ver ejemplo simple", "Comenzar ahora"];
+      ? ["Aprendé cómo funciona", "Entendé un ejemplo simple", "Empezá con una guía clara"]
+      : ["Aprendé cómo funciona", "Entendé un ejemplo simple", "Empezá con una guía clara"];
 
     return {
       language: "Español",
       hook,
-      subline: baseSubline || `Explicación ${style.toLowerCase()}, breve y confiable para lectura móvil.`,
+      subline: baseSubline || `Explicación ${style.toLowerCase()}, ${countryContext.culturalExpression}, ideal para móvil.`,
       bullets: (baseBullets.length >= 3
         ? [baseBullets[0], baseBullets[1], baseBullets[2]]
         : [
@@ -186,7 +357,7 @@ function i18nCopy(lang: LocaleCode, payload: FormData, angle: AdAngle, idx: numb
     return {
       language: "Română",
       hook,
-      subline: baseSubline || `Mesaj ${style.toLowerCase()}, profesionist și ușor de parcurs pe mobil.`,
+      subline: baseSubline || `Mesaj ${style.toLowerCase()}, ${countryContext.culturalExpression}, optimizat pentru mobil.`,
       bullets: (baseBullets.length >= 3
         ? [baseBullets[0], baseBullets[1], baseBullets[2]]
         : [
@@ -210,7 +381,7 @@ function i18nCopy(lang: LocaleCode, payload: FormData, angle: AdAngle, idx: numb
     return {
       language: "中文",
       hook: hooks[angle],
-      subline: baseSubline || `以${style}风格解释核心逻辑，移动端阅读更清晰。`,
+      subline: baseSubline || `以${style}风格解释核心逻辑，移动端阅读更清晰，并保持合规表达。`,
       bullets: (baseBullets.length >= 3
         ? [baseBullets[0], baseBullets[1], baseBullets[2]]
         : [
@@ -234,7 +405,7 @@ function i18nCopy(lang: LocaleCode, payload: FormData, angle: AdAngle, idx: numb
   return {
     language: "English",
     hook: hooks[angle],
-    subline: baseSubline || `A ${style.toLowerCase()} and trust-first explanation built for mobile reading.`,
+    subline: baseSubline || `A ${style.toLowerCase()} and ${countryContext.culturalExpression} explanation built for mobile reading.`,
     bullets: (baseBullets.length >= 3
       ? [baseBullets[0], baseBullets[1], baseBullets[2]]
       : [
@@ -275,22 +446,32 @@ export function buildVariants(payload: FormData, preferences?: PreferenceWeights
   const templateOrder = rotateFromSeed(templates, payload.country.length + payload.theme.length);
   const countryStrategy = getCountryStrategy(payload.country || "");
 
+  const uniqueTemplates = [...templateOrder]
+    .map((template) => ({ template, score: (preferences?.designTemplate?.[template] ?? 0) + Math.random() + (userProfile.stylePreference.includes("premium_minimal") && template === "premium_minimal" ? 0.8 : 0) + (userProfile.stylePreference.includes("institutional") && (template === "trust_framework" || template === "mistake_prevention") ? 0.6 : 0) }))
+    .sort((a, b) => b.score - a.score)
+    .map((item) => item.template as DesignTemplate)
+    .slice(0, 5);
+
+  const angleWeights: Record<AdAngle, number> = {
+    question: (countryStrategy?.angleWeights.question ?? 1) + ((preferences?.angle.question ?? 0) * 0.25),
+    beginner: (countryStrategy?.angleWeights.beginner ?? 1) + ((preferences?.angle.beginner ?? 0) * 0.25),
+    curiosity: (countryStrategy?.angleWeights.curiosity ?? 1) + ((preferences?.angle.curiosity ?? 0) * 0.25),
+    mistake: (countryStrategy?.angleWeights.mistake ?? 1) + ((preferences?.angle.mistake ?? 0) * 0.25),
+    opportunity: (countryStrategy?.angleWeights.opportunity ?? 1) + ((preferences?.angle.opportunity ?? 0) * 0.25)
+  };
+
+  if (baseAd?.angle) {
+    angleWeights[baseAd.angle] = (angleWeights[baseAd.angle] ?? 1) + 0.6;
+  }
+
+  const angleOrder = [...adAngles]
+    .map((angle) => ({ angle, score: angleWeights[angle] + Math.random() * 0.35 }))
+    .sort((a, b) => b.score - a.score)
+    .map((item) => item.angle as AdAngle);
+
   return new Array(5).fill(0).map((_, idx) => {
-    const designTemplate = weightedPick(templateOrder, preferences?.designTemplate) as DesignTemplate;
-
-    const angleWeights: Record<AdAngle, number> = {
-      question: (countryStrategy?.angleWeights.question ?? 1) + ((preferences?.angle.question ?? 0) * 0.25),
-      beginner: (countryStrategy?.angleWeights.beginner ?? 1) + ((preferences?.angle.beginner ?? 0) * 0.25),
-      curiosity: (countryStrategy?.angleWeights.curiosity ?? 1) + ((preferences?.angle.curiosity ?? 0) * 0.25),
-      mistake: (countryStrategy?.angleWeights.mistake ?? 1) + ((preferences?.angle.mistake ?? 0) * 0.25),
-      opportunity: (countryStrategy?.angleWeights.opportunity ?? 1) + ((preferences?.angle.opportunity ?? 0) * 0.25)
-    };
-
-    if (baseAd?.angle) {
-      angleWeights[baseAd.angle] = (angleWeights[baseAd.angle] ?? 1) + 0.6;
-    }
-
-    const adAngle = weightedAnglePick(angleWeights);
+    const designTemplate = uniqueTemplates[idx % uniqueTemplates.length];
+    const adAngle = angleOrder[idx % angleOrder.length] || weightedAnglePick(angleWeights);
     const paletteKey = weightedPick(palettes.map((p) => p.key), preferences?.palette);
     const paletteEntry = palettes.find((p) => p.key === paletteKey) || palettes[idx % palettes.length];
     const preferredLayout = weightedPick(
@@ -298,14 +479,22 @@ export function buildVariants(payload: FormData, preferences?: PreferenceWeights
       { ...(preferences?.layoutStyle || {}), ...(preferences?.structure || {}) }
     );
 
+    const generatedCopy = i18nCopy(lang, payload, adAngle, idx, baseAd);
+    const quality = scoreConcept(generatedCopy, 8 + (idx % 3));
+    const finalCopy = improveConceptIfNeeded(generatedCopy, quality);
+
     return {
       id: `${Date.now()}-${idx}`,
       adAngle,
       designTemplate,
+      conceptName: directionLibrary[idx % directionLibrary.length],
+      visualDirection: `${directionLibrary[idx % directionLibrary.length]} / premium mobile-first`,
+      textDensity: "low",
+      ctaStyle: "soft_education",
       paletteKey: paletteEntry.key,
       layoutStyle: preferredLayout,
       palette: paletteEntry.colors,
-      copy: i18nCopy(lang, payload, adAngle, idx, baseAd)
+      copy: finalCopy
     };
   });
 }
@@ -323,7 +512,12 @@ export function toPosterMetadata(payload: FormData, variant: PosterVariant): Pos
     cta: variant.copy.cta,
     palette: variant.paletteKey,
     layoutStyle: variant.layoutStyle,
-    structure: variant.layoutStyle
+    structure: variant.layoutStyle,
+    hook_type: variant.adAngle,
+    language_style: variant.copy.language,
+    text_density: variant.textDensity,
+    cta_style: variant.ctaStyle,
+    visual_direction: variant.visualDirection
   };
 }
 
@@ -347,7 +541,7 @@ export function savePreference(feedback: PreferenceFeedback, metadata: PosterMet
     structure: update(weights.structure || {}, metadata.structure)
   };
 
-  const nextMemory = [...memory, { country: metadata.country, angle: metadata.angle, hook: metadata.hook, designTemplate: metadata.designTemplate, type: feedback, createdAt: Date.now() }].slice(-300);
+  const nextMemory = [...memory, { type: feedback, metadata, createdAt: Date.now() }].slice(-300);
 
   localStorage.setItem(PREFERENCE_WEIGHTS_KEY, JSON.stringify(nextWeights));
   localStorage.setItem(PREFERENCE_MEMORY_KEY, JSON.stringify(nextMemory));
@@ -367,22 +561,25 @@ export function drawPoster(canvas: HTMLCanvasElement, variant: PosterVariant, pa
   canvas.width = 1254;
   canvas.height = 1254;
 
-  if (variant.designTemplate === "bank-trust") return renderBankTrust(ctx, variant, payload);
-  if (variant.designTemplate === "data-report") return renderDataReport(ctx, variant, payload);
-  if (variant.designTemplate === "learning-steps") return renderLearningSteps(ctx, variant, payload);
-  if (variant.designTemplate === "market-brief") return renderMarketBrief(ctx, variant, payload);
-  return renderPremiumMinimal(ctx, variant, payload);
+  if (variant.designTemplate === "beginner_clarity") return renderLearningSteps(ctx, variant, payload);
+  if (variant.designTemplate === "trust_framework") return renderBankTrust(ctx, variant, payload);
+  if (variant.designTemplate === "market_brief") return renderMarketBrief(ctx, variant, payload);
+  if (variant.designTemplate === "premium_minimal") return renderPremiumMinimal(ctx, variant, payload);
+  if (variant.designTemplate === "educational_checklist") return renderStoryFrame(ctx, variant, payload);
+  if (variant.designTemplate === "mistake_prevention") return renderEditorialSplit(ctx, variant, payload);
+  if (variant.designTemplate === "opportunity_awareness") return renderTrustInfographic(ctx, variant, payload);
+  return renderDataReport(ctx, variant, payload);
 }
 
 function renderBaseTexture(ctx: CanvasRenderingContext2D, variant: PosterVariant) {
   const grad = ctx.createLinearGradient(0, 0, 1254, 1254);
-  grad.addColorStop(0, variant.palette.panel);
+  grad.addColorStop(0, "#f8fafc");
   grad.addColorStop(1, variant.palette.bg);
   ctx.fillStyle = grad;
   ctx.fillRect(0, 0, 1254, 1254);
 
-  ctx.strokeStyle = "rgba(255,255,255,0.05)";
-  for (let x = 0; x < 1254; x += 70) {
+  ctx.strokeStyle = "rgba(15,23,42,0.06)";
+  for (let x = 0; x < 1254; x += 84) {
     ctx.beginPath();
     ctx.moveTo(x, 0);
     ctx.lineTo(x, 1254);
@@ -392,115 +589,183 @@ function renderBaseTexture(ctx: CanvasRenderingContext2D, variant: PosterVariant
 
 function renderBankTrust(ctx: CanvasRenderingContext2D, variant: PosterVariant, payload: FormData) {
   renderBaseTexture(ctx, variant);
-  roundRect(ctx, 72, 80, 1110, 1090, 30, true, "rgba(9,26,41,0.70)");
-  roundRect(ctx, 96, 108, 1060, 84, 14, true, "rgba(255,255,255,0.08)");
-  text(ctx, `TRUST FRAMEWORK • ${variant.adAngle.toUpperCase()}`, 120, 162, "600 24px Inter, Arial", variant.palette.accent);
+  roundRect(ctx, 72, 72, 1110, 1110, 28, true, "rgba(255,255,255,0.90)");
+  ctx.fillStyle = variant.palette.accent;
+  ctx.fillRect(72, 72, 1110, 14);
+  text(ctx, "TRUST FRAMEWORK", 112, 138, "600 26px Inter, Arial", "#0f172a");
+  textWrap(ctx, variant.copy.hook, 112, 270, 690, 76, "700 64px Inter, Arial", "#0f172a");
+  textWrap(ctx, variant.copy.subline, 112, 430, 690, 42, "400 31px Inter, Arial", "#334155");
 
-  textWrap(ctx, variant.copy.hook, 120, 270, 980, 72, "700 62px Inter, Arial", variant.palette.title);
-  textWrap(ctx, variant.copy.subline, 120, 430, 980, 46, "400 34px Inter, Arial", variant.palette.body);
-
+  roundRect(ctx, 840, 188, 300, 280, 18, true, "rgba(15,23,42,0.05)");
+  text(ctx, "Why trust this?", 874, 246, "600 30px Inter, Arial", "#0f172a");
   variant.copy.bullets.forEach((line, i) => {
-    roundRect(ctx, 110, 545 + i * 118, 1020, 88, 16, true, "rgba(255,255,255,0.06)");
-    textWrap(ctx, line, 142, 602 + i * 118, 940, 38, "500 30px Inter, Arial", variant.palette.body);
+    circle(ctx, 876, 304 + i * 68, 8, variant.palette.accent);
+    textWrap(ctx, line, 898, 314 + i * 68, 220, 32, "500 23px Inter, Arial", "#334155");
   });
 
-  roundRect(ctx, 120, 948, 420, 86, 14, true, variant.palette.accent);
-  text(ctx, variant.copy.cta, 150, 1004, "700 33px Inter, Arial", "#08213a");
+  text(ctx, "Education-first, no unrealistic claims.", 112, 962, "500 28px Inter, Arial", "#475569");
+  roundRect(ctx, 112, 1002, 480, 84, 42, true, "#0f172a");
+  text(ctx, variant.copy.cta, 148, 1056, "700 30px Inter, Arial", "#f8fafc");
   footer(ctx, variant, payload);
 }
 
 function renderDataReport(ctx: CanvasRenderingContext2D, variant: PosterVariant, payload: FormData) {
   renderBaseTexture(ctx, variant);
-  roundRect(ctx, 70, 70, 1114, 1114, 28, true, "rgba(9,20,33,0.65)");
+  roundRect(ctx, 72, 72, 1110, 1110, 24, true, "#ffffff");
+  text(ctx, "DATA REPORT LITE", 104, 130, "700 24px Inter, Arial", "#0f172a");
+  text(ctx, "Financial Education Brief", 932, 130, "500 20px Inter, Arial", "#64748b");
 
-  text(ctx, "DATA REPORT FORMAT", 110, 130, "600 22px Inter, Arial", variant.palette.accent);
-  roundRect(ctx, 104, 152, 320, 92, 14, true, "rgba(255,255,255,0.07)");
-  roundRect(ctx, 444, 152, 320, 92, 14, true, "rgba(255,255,255,0.07)");
-  roundRect(ctx, 784, 152, 320, 92, 14, true, "rgba(255,255,255,0.07)");
-  text(ctx, "Insight", 128, 208, "600 28px Inter, Arial", variant.palette.title);
-  text(ctx, "Clarity", 468, 208, "600 28px Inter, Arial", variant.palette.title);
-  text(ctx, "Readability", 808, 208, "600 28px Inter, Arial", variant.palette.title);
+  ctx.strokeStyle = "rgba(15,23,42,0.12)";
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(104, 156);
+  ctx.lineTo(1148, 156);
+  ctx.stroke();
 
-  textWrap(ctx, variant.copy.hook, 110, 340, 1030, 66, "700 56px Inter, Arial", variant.palette.title);
-  textWrap(ctx, variant.copy.subline, 110, 500, 1020, 44, "400 32px Inter, Arial", variant.palette.body);
+  textWrap(ctx, variant.copy.hook, 104, 260, 680, 74, "700 60px Inter, Arial", "#0f172a");
+  textWrap(ctx, variant.copy.subline, 104, 420, 680, 42, "400 30px Inter, Arial", "#334155");
 
-  roundRect(ctx, 104, 620, 1060, 292, 18, true, "rgba(255,255,255,0.05)");
-  variant.copy.bullets.forEach((line, i) => {
-    textWrap(ctx, `• ${line}`, 132, 700 + i * 82, 980, 36, "500 29px Inter, Arial", variant.palette.body);
-  });
+  roundRect(ctx, 830, 220, 318, 320, 16, true, "rgba(15,23,42,0.04)");
+  text(ctx, "Snapshot", 858, 274, "600 28px Inter, Arial", "#0f172a");
+  variant.copy.bullets.forEach((line, i) => textWrap(ctx, `${i + 1}. ${line}`, 858, 334 + i * 74, 272, 32, "500 22px Inter, Arial", "#334155"));
 
-  roundRect(ctx, 104, 948, 520, 84, 12, true, "rgba(146,196,235,0.88)");
-  text(ctx, variant.copy.cta, 136, 1002, "700 32px Inter, Arial", "#0d2b44");
+  ctx.strokeStyle = variant.palette.accent;
+  ctx.lineWidth = 6;
+  ctx.beginPath();
+  ctx.moveTo(104, 690);
+  ctx.lineTo(320, 620);
+  ctx.lineTo(520, 662);
+  ctx.lineTo(700, 590);
+  ctx.lineTo(860, 636);
+  ctx.stroke();
+  text(ctx, "Trendline: clarity ↑ engagement", 104, 742, "600 28px Inter, Arial", "#0f172a");
+  roundRect(ctx, 104, 948, 560, 88, 44, true, "#0f172a");
+  text(ctx, variant.copy.cta, 140, 1006, "700 31px Inter, Arial", "#f8fafc");
   footer(ctx, variant, payload);
 }
 
 function renderLearningSteps(ctx: CanvasRenderingContext2D, variant: PosterVariant, payload: FormData) {
   renderBaseTexture(ctx, variant);
-  roundRect(ctx, 72, 72, 1110, 1110, 34, true, "rgba(10,23,36,0.67)");
-
-  textWrap(ctx, variant.copy.hook, 110, 220, 1020, 68, "700 58px Inter, Arial", variant.palette.title);
-  textWrap(ctx, variant.copy.subline, 110, 380, 1020, 44, "400 31px Inter, Arial", variant.palette.body);
-
+  roundRect(ctx, 72, 72, 1110, 1110, 28, true, "rgba(255,255,255,0.94)");
+  text(ctx, "BEGINNER CLARITY", 108, 132, "700 24px Inter, Arial", "#0f172a");
+  textWrap(ctx, variant.copy.hook, 108, 250, 980, 72, "700 58px Inter, Arial", "#0f172a");
+  textWrap(ctx, variant.copy.subline, 108, 404, 980, 40, "400 29px Inter, Arial", "#475569");
+  ctx.strokeStyle = "rgba(15,23,42,0.14)";
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.moveTo(176, 474);
+  ctx.lineTo(176, 930);
+  ctx.stroke();
   variant.copy.bullets.forEach((line, i) => {
-    const y = 500 + i * 150;
-    roundRect(ctx, 126, y, 980, 122, 18, true, "rgba(255,255,255,0.06)");
-    circle(ctx, 174, y + 61, 28, variant.palette.accent);
-    text(ctx, `Step ${i + 1}`, 154, y + 69, "700 18px Inter, Arial", "#0f2b43");
-    textWrap(ctx, line, 236, y + 72, 840, 34, "500 29px Inter, Arial", variant.palette.body);
+    const y = 542 + i * 136;
+    circle(ctx, 176, y - 10, 24, variant.palette.accent);
+    text(ctx, String(i + 1), 168, y - 2, "700 19px Inter, Arial", "#0f172a");
+    text(ctx, `Step ${i + 1}`, 236, y - 8, "600 26px Inter, Arial", "#0f172a");
+    textWrap(ctx, line, 236, y + 30, 840, 34, "500 27px Inter, Arial", "#334155");
   });
-
-  roundRect(ctx, 126, 980, 470, 84, 14, true, variant.palette.accent);
-  text(ctx, variant.copy.cta, 160, 1033, "700 32px Inter, Arial", "#0b2236");
+  roundRect(ctx, 108, 980, 520, 88, 44, true, "#0f172a");
+  text(ctx, variant.copy.cta, 146, 1038, "700 30px Inter, Arial", "#f8fafc");
   footer(ctx, variant, payload);
 }
 
 function renderMarketBrief(ctx: CanvasRenderingContext2D, variant: PosterVariant, payload: FormData) {
   renderBaseTexture(ctx, variant);
-  roundRect(ctx, 68, 68, 1118, 1118, 28, true, "rgba(8,20,32,0.70)");
+  roundRect(ctx, 64, 64, 1126, 1126, 14, true, "#f8fafc");
+  text(ctx, "MARKET BRIEF", 98, 120, "700 28px Inter, Arial", "#0f172a");
+  text(ctx, "Edition 01", 1030, 120, "500 21px Inter, Arial", "#64748b");
+  ctx.strokeStyle = "rgba(15,23,42,0.12)";
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(98, 146);
+  ctx.lineTo(1150, 146);
+  ctx.stroke();
+  textWrap(ctx, variant.copy.hook, 98, 246, 1050, 74, "700 62px Inter, Arial", "#0f172a");
+  textWrap(ctx, variant.copy.subline, 98, 392, 1050, 40, "400 30px Inter, Arial", "#334155");
 
-  roundRect(ctx, 92, 92, 1070, 82, 14, true, "rgba(255,255,255,0.1)");
-  text(ctx, "MARKET BRIEF", 120, 145, "700 28px Inter, Arial", variant.palette.title);
-  roundRect(ctx, 930, 110, 200, 46, 12, true, "rgba(127,177,226,0.25)");
-  text(ctx, variant.adAngle.toUpperCase(), 965, 141, "600 20px Inter, Arial", variant.palette.accent);
+  ctx.fillStyle = "rgba(15,23,42,0.03)";
+  ctx.fillRect(98, 470, 680, 420);
+  text(ctx, "Key points", 128, 530, "600 28px Inter, Arial", "#0f172a");
+  variant.copy.bullets.forEach((line, i) => textWrap(ctx, `• ${line}`, 128, 594 + i * 84, 620, 34, "500 27px Inter, Arial", "#334155"));
 
-  roundRect(ctx, 92, 200, 1070, 260, 18, true, "rgba(255,255,255,0.05)");
-  textWrap(ctx, variant.copy.hook, 120, 292, 1010, 62, "700 54px Inter, Arial", variant.palette.title);
-  textWrap(ctx, variant.copy.subline, 120, 470, 1000, 42, "400 30px Inter, Arial", variant.palette.body);
-
-  roundRect(ctx, 92, 560, 1070, 296, 18, true, "rgba(255,255,255,0.06)");
-  variant.copy.bullets.forEach((line, i) => {
-    textWrap(ctx, `• ${line}`, 124, 638 + i * 84, 980, 36, "500 29px Inter, Arial", variant.palette.body);
-  });
-
-  roundRect(ctx, 92, 922, 450, 92, 14, true, variant.palette.accent);
-  text(ctx, variant.copy.cta, 128, 980, "700 32px Inter, Arial", "#08253d");
+  roundRect(ctx, 818, 470, 332, 420, 14, true, "#0f172a");
+  text(ctx, "Read before acting", 850, 540, "600 28px Inter, Arial", "#f8fafc");
+  textWrap(ctx, "Learning first builds confidence and consistency.", 850, 612, 266, 34, "400 24px Inter, Arial", "rgba(248,250,252,0.88)");
+  roundRect(ctx, 98, 944, 470, 92, 46, true, variant.palette.accent);
+  text(ctx, variant.copy.cta, 130, 1004, "700 31px Inter, Arial", "#0b2236");
   footer(ctx, variant, payload);
 }
 
 function renderPremiumMinimal(ctx: CanvasRenderingContext2D, variant: PosterVariant, payload: FormData) {
   renderBaseTexture(ctx, variant);
-  ctx.fillStyle = "rgba(255,255,255,0.02)";
-  ctx.fillRect(86, 86, 1082, 1082);
-  ctx.strokeStyle = "rgba(255,255,255,0.20)";
-  ctx.lineWidth = 1;
+  roundRect(ctx, 86, 86, 1082, 1082, 12, true, "#ffffff");
+  ctx.strokeStyle = "rgba(15,23,42,0.10)";
+  ctx.lineWidth = 1.5;
   ctx.strokeRect(86, 86, 1082, 1082);
+  text(ctx, "PREMIUM MINIMAL", 116, 142, "600 21px Inter, Arial", "#475569");
+  textWrap(ctx, variant.copy.hook, 116, 360, 1020, 88, "700 74px Georgia, Times New Roman, serif", "#0f172a");
+  textWrap(ctx, variant.copy.subline, 116, 566, 780, 40, "400 30px Inter, Arial", "#334155");
+  variant.copy.bullets.forEach((line, i) => textWrap(ctx, line, 116, 716 + i * 72, 780, 32, "500 26px Inter, Arial", "#475569"));
+  roundRect(ctx, 116, 952, 430, 88, 44, true, "#0f172a");
+  text(ctx, variant.copy.cta, 150, 1008, "700 30px Inter, Arial", "#f8fafc");
+  footer(ctx, variant, payload);
+}
 
-  text(ctx, "PREMIUM EDITION", 108, 134, "600 20px Inter, Arial", variant.palette.accent);
-  textWrap(ctx, variant.copy.hook, 108, 290, 980, 78, "700 68px Inter, Arial", variant.palette.title);
-  textWrap(ctx, variant.copy.subline, 108, 520, 980, 48, "400 33px Inter, Arial", variant.palette.body);
+function renderEditorialSplit(ctx: CanvasRenderingContext2D, variant: PosterVariant, payload: FormData) {
+  renderBaseTexture(ctx, variant);
+  roundRect(ctx, 70, 70, 1114, 1114, 20, true, "#ffffff");
+  ctx.fillStyle = "rgba(220,38,38,0.12)";
+  ctx.fillRect(70, 70, 300, 1114);
+  text(ctx, "MISTAKE PREVENTION", 98, 124, "700 21px Inter, Arial", "#991b1b");
+  text(ctx, "Avoid these traps", 98, 170, "600 30px Inter, Arial", "#7f1d1d");
+  variant.copy.bullets.forEach((b, i) => textWrap(ctx, `• ${b}`, 98, 260 + i * 180, 240, 36, "500 26px Inter, Arial", "#7f1d1d"));
+  textWrap(ctx, variant.copy.hook, 410, 280, 730, 78, "700 62px Inter, Arial", "#0f172a");
+  textWrap(ctx, variant.copy.subline, 410, 454, 730, 42, "400 31px Inter, Arial", "#334155");
+  roundRect(ctx, 410, 950, 450, 90, 45, true, "#0f172a");
+  text(ctx, variant.copy.cta, 444, 1008, "700 30px Inter, Arial", "#f8fafc");
+  footer(ctx, variant, payload);
+}
 
-  variant.copy.bullets.forEach((line, i) => {
-    textWrap(ctx, `— ${line}`, 108, 660 + i * 72, 980, 34, "500 28px Inter, Arial", variant.palette.body);
+function renderStoryFrame(ctx: CanvasRenderingContext2D, variant: PosterVariant, payload: FormData) {
+  renderBaseTexture(ctx, variant);
+  roundRect(ctx, 86, 86, 1082, 1082, 22, true, "#ffffff");
+  text(ctx, "EDUCATIONAL CHECKLIST", 126, 146, "700 24px Inter, Arial", "#0f172a");
+  textWrap(ctx, variant.copy.hook, 126, 246, 960, 70, "700 56px Inter, Arial", "#0f172a");
+  textWrap(ctx, variant.copy.subline, 126, 400, 960, 40, "400 29px Inter, Arial", "#475569");
+  variant.copy.bullets.forEach((b, i) => {
+    roundRect(ctx, 126, 500 + i * 136, 980, 104, 18, true, "rgba(15,23,42,0.04)");
+    text(ctx, "✓", 158, 566 + i * 136, "700 40px Inter, Arial", variant.palette.accent);
+    textWrap(ctx, b, 210, 566 + i * 136, 860, 34, "500 27px Inter, Arial", "#334155");
   });
+  roundRect(ctx, 126, 952, 500, 88, 44, true, "#0f172a");
+  text(ctx, variant.copy.cta, 160, 1010, "700 30px Inter, Arial", "#f8fafc");
+  footer(ctx, variant, payload);
+}
 
-  roundRect(ctx, 108, 952, 410, 86, 43, true, "rgba(255,255,255,0.92)");
-  text(ctx, variant.copy.cta, 142, 1007, "700 30px Inter, Arial", "#0d2c46");
+function renderTrustInfographic(ctx: CanvasRenderingContext2D, variant: PosterVariant, payload: FormData) {
+  renderBaseTexture(ctx, variant);
+  const grad = ctx.createLinearGradient(72, 72, 1182, 1182);
+  grad.addColorStop(0, "#0f172a");
+  grad.addColorStop(1, "#1e293b");
+  roundRect(ctx, 72, 72, 1110, 1110, 24, true, "#0f172a");
+  ctx.fillStyle = grad;
+  ctx.fillRect(72, 72, 1110, 1110);
+  text(ctx, "OPPORTUNITY AWARENESS", 112, 132, "600 24px Inter, Arial", "rgba(248,250,252,0.9)");
+  textWrap(ctx, variant.copy.hook, 112, 262, 1030, 68, "700 58px Inter, Arial", "#f8fafc");
+  textWrap(ctx, variant.copy.subline, 112, 420, 1030, 40, "400 30px Inter, Arial", "rgba(241,245,249,0.9)");
+  for (let i = 0; i < 3; i += 1) {
+    const x = 112 + i * 340;
+    roundRect(ctx, x, 548, 320, 260, 18, true, "rgba(248,250,252,0.10)");
+    text(ctx, `Opportunity ${i + 1}`, x + 22, 602, "600 24px Inter, Arial", "#cbd5e1");
+    textWrap(ctx, variant.copy.bullets[i], x + 22, 658, 270, 32, "500 24px Inter, Arial", "#f8fafc");
+  }
+  roundRect(ctx, 112, 934, 500, 92, 46, true, "#f8fafc");
+  text(ctx, variant.copy.cta, 146, 994, "700 30px Inter, Arial", "#0f172a");
   footer(ctx, variant, payload);
 }
 
 function footer(ctx: CanvasRenderingContext2D, variant: PosterVariant, payload: FormData) {
-  text(ctx, `${payload.country} · ${variant.copy.language} · ${variant.designTemplate}`, 108, 1114, "400 23px Inter, Arial", variant.palette.body);
-  textWrap(ctx, variant.copy.disclaimer, 108, 1160, 1020, 28, "400 21px Inter, Arial", "rgba(255,255,255,0.86)");
+  text(ctx, `${payload.country} · ${variant.copy.language} · ${variant.designTemplate}`, 108, 1114, "500 21px Inter, Arial", "rgba(15,23,42,0.72)");
+  textWrap(ctx, variant.copy.disclaimer, 108, 1160, 1020, 26, "400 20px Inter, Arial", "rgba(15,23,42,0.56)");
 }
 
 function text(

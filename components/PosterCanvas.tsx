@@ -32,7 +32,7 @@ export default function PosterCanvas({ variant, payload, index, onLike, onReject
   return (
     <div className={`poster-frame poster-${variant.designTemplate}`}>
       <div className="poster-meta">
-        <span>Variant {index + 1}</span>
+        <span>{variant.conceptName} · Variant {index + 1}</span>
         <span className="poster-chip">{variant.designTemplate}</span>
       </div>
 
