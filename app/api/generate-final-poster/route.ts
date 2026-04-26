@@ -47,12 +47,16 @@ Generate only background + hero visual. No text, no labels, no buttons, no logos
 Negative prompt: no words, no labels, no logos, no watermarks, no dashboard UI screenshot, no cheap canva style`
     });
 
-    const imageUrl = imageResult.data?.[0]?.url;
-    if (!imageUrl) {
-      return NextResponse.json({ error: "image generation failed" }, { status: 502 });
+    const imageData = imageResult.data?.[0];
+    const b64 = imageData?.b64_json;
+    const imageUrl = imageData?.url;
+    if (!b64 && !imageUrl) {
+      return NextResponse.json({ error: "OpenAI returned no image payload" }, { status: 502 });
     }
 
-    const baseBuffer = Buffer.from(await (await fetch(imageUrl)).arrayBuffer());
+    const baseBuffer = b64
+      ? Buffer.from(b64, "base64")
+      : Buffer.from(await (await fetch(imageUrl as string)).arrayBuffer());
     const resized = await sharp(baseBuffer).resize(1254, 1254, { fit: "cover" }).png().toBuffer();
 
     const overlaySvg = `
@@ -86,7 +90,11 @@ Negative prompt: no words, no labels, no logos, no watermarks, no dashboard UI s
       imageBase64: finalBuffer.toString("base64"),
       status: "generated"
     });
-  } catch {
-    return NextResponse.json({ error: "generate-final-poster failed" }, { status: 500 });
+  } catch (openaiError: unknown) {
+    const message = openaiError instanceof Error
+      ? openaiError.message
+      : JSON.stringify(openaiError);
+    console.error("generate-final-poster error:", openaiError);
+    return NextResponse.json({ error: message || JSON.stringify(openaiError) }, { status: 500 });
   }
 }
