@@ -101,6 +101,8 @@ export default function Home() {
   const [creativeBatch, setCreativeBatch] = useState<BatchCreativeItem[]>([]);
   const [recommendedIds, setRecommendedIds] = useState<string[]>([]);
   const [patterns, setPatterns] = useState<FeedbackPattern[]>([]);
+  const [generatingMap, setGeneratingMap] = useState<Record<string, boolean>>({});
+  const [generateMessageMap, setGenerateMessageMap] = useState<Record<string, string>>({});
 
   useEffect(() => {
     try {
@@ -259,26 +261,46 @@ export default function Home() {
     link.click();
   };
 
-  const generateImageForCard = async (item: BatchCreativeItem) => {
-    const res = await fetch("/api/generate-final-poster", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        headline: item.design_prompt.text_overlay.headline,
-        subheadline: item.design_prompt.text_overlay.subheadline,
-        trustReason: item.design_prompt.text_overlay.trust_reason,
-        cta: item.design_prompt.text_overlay.cta,
-        disclaimer: item.design_prompt.text_overlay.disclaimer,
-        artDirection: item.art_direction,
-        country: form.country,
-        language,
-        topic: form.theme
-      })
-    });
-    const data = await res.json();
-    const resolvedImage = data?.imageUrl || data?.image_url || (data?.imageBase64 ? `data:image/png;base64,${data.imageBase64}` : null);
-    if (resolvedImage) {
-      setCreativeBatch((prev) => prev.map((v) => (v.id === item.id ? { ...v, generated_image_result: resolvedImage } : v)));
+  const generateFinalPoster = async (itemId: string) => {
+    console.log("Generate Final Poster clicked", itemId);
+    setGeneratingMap((prev) => ({ ...prev, [itemId]: true }));
+    setGenerateMessageMap((prev) => ({ ...prev, [itemId]: "Calling /api/generate-final-poster..." }));
+
+    const item = creativeBatch.find((v) => v.id === itemId);
+    if (!item) {
+      setGeneratingMap((prev) => ({ ...prev, [itemId]: false }));
+      setGenerateMessageMap((prev) => ({ ...prev, [itemId]: "Card not found." }));
+      return;
+    }
+
+    try {
+      const res = await fetch("/api/generate-final-poster", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          headline: item.design_prompt.text_overlay.headline,
+          subheadline: item.design_prompt.text_overlay.subheadline,
+          trustReason: item.design_prompt.text_overlay.trust_reason,
+          cta: item.design_prompt.text_overlay.cta,
+          disclaimer: item.design_prompt.text_overlay.disclaimer,
+          artDirection: item.art_direction,
+          country: form.country,
+          language,
+          topic: form.theme
+        })
+      });
+      const data = await res.json();
+      const resolvedImage = data?.imageBase64 ? `data:image/png;base64,${data.imageBase64}` : (data?.imageUrl || data?.image_url || null);
+      if (!res.ok || !resolvedImage) {
+        throw new Error(data?.error || "Poster generation failed");
+      }
+      setCreativeBatch((prev) => prev.map((v) => (v.id === itemId ? { ...v, generated_image_result: resolvedImage } : v)));
+      setGenerateMessageMap((prev) => ({ ...prev, [itemId]: "Final poster generated successfully." }));
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Unknown error";
+      setGenerateMessageMap((prev) => ({ ...prev, [itemId]: `Error: ${msg}` }));
+    } finally {
+      setGeneratingMap((prev) => ({ ...prev, [itemId]: false }));
     }
   };
 
@@ -561,11 +583,12 @@ export default function Home() {
 
                 <button
                   type="button"
-                  className="w-full rounded-full bg-slate-900 px-3 py-2 text-xs font-medium text-white"
-                  onClick={() => generateImageForCard(item)}
+                  className="w-full cursor-pointer rounded-full bg-slate-900 px-3 py-2 text-xs font-medium text-white"
+                  onClick={() => generateFinalPoster(item.id)}
                 >
-                  Generate Final Poster
+                  {generatingMap[item.id] ? "Generating..." : "Generate Final Poster"}
                 </button>
+                {generateMessageMap[item.id] && <p className="text-[11px] text-slate-600">{generateMessageMap[item.id]}</p>}
 
                 <button
                   type="button"
