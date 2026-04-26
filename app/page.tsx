@@ -539,15 +539,35 @@ export default function Home() {
                 <p>Status: <span className={`font-semibold ${item.status === "ready" ? "text-emerald-700" : item.status === "needs_fix" ? "text-amber-700" : "text-rose-700"}`}>{item.status}</span> · reason: {item.reason} · score: {item.quality_score.overall_score.toFixed(1)} {recommendedIds.includes(item.id) ? "⭐ Recommended" : ""}</p>
                 <p className="rounded-lg bg-slate-50 p-2 text-[11px]">Design explain: {item.design_explanation.visual_hook} · {item.design_explanation.reason} · risk: {item.design_explanation.risk}</p>
               </div>
-              <div className="mt-3 grid grid-cols-2 gap-2">
-                <button type="button" className="rounded-full border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700" onClick={() => navigator.clipboard.writeText(`${item.design_prompt.prompt}\n\nNegative prompt:\n${item.design_prompt.negative_prompt}`)}>Copy Prompt</button>
-                <button type="button" className="rounded-full bg-slate-900 px-3 py-1.5 text-xs font-medium text-white" onClick={() => generateImageForCard(item)}>Generate Final Poster</button>
-                <button type="button" className="rounded-full border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700" onClick={regenerateCopyForCard}>Regenerate Copy</button>
-                <button type="button" className="rounded-full border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700" onClick={regeneratePromptForCard}>Regenerate Prompt</button>
-                <button type="button" className="rounded-full border border-emerald-300 bg-emerald-50 px-3 py-1.5 text-xs font-medium text-emerald-700" onClick={() => saveCreativeFeedback("like", item)}>Like</button>
-                <button type="button" className="rounded-full border border-rose-300 bg-rose-50 px-3 py-1.5 text-xs font-medium text-rose-700" onClick={() => saveCreativeFeedback("rejected", item)}>Reject</button>
-                <button type="button" disabled={!(item.status === "ready" && item.quality_score.overall_score >= 8 && item.generated_image_result)} className="rounded-full border border-indigo-300 bg-indigo-50 px-3 py-1.5 text-xs font-medium text-indigo-700 disabled:opacity-50" onClick={() => saveCreativeFeedback("winner", item)}>Mark Winner</button>
-                <button type="button" disabled={!item.generated_image_result} className="rounded-full border border-slate-400 bg-slate-100 px-3 py-1.5 text-xs font-medium text-slate-700 disabled:opacity-50" onClick={() => exportCreativePng(item)}>Export PNG</button>
+              <div className="mt-3 space-y-2">
+                <div className="grid grid-cols-2 gap-2">
+                  <button type="button" className="rounded-full border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700" onClick={() => navigator.clipboard.writeText(`${item.design_prompt.prompt}\n\nNegative prompt:\n${item.design_prompt.negative_prompt}`)}>Copy Prompt</button>
+                  <button type="button" className="rounded-full border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700" onClick={regenerateCopyForCard}>Regenerate Copy</button>
+                  <button type="button" className="rounded-full border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700" onClick={regeneratePromptForCard}>Regenerate Prompt</button>
+                  <button type="button" disabled={!(item.status === "ready" && item.quality_score.overall_score >= 8 && item.generated_image_result)} className="rounded-full border border-indigo-300 bg-indigo-50 px-3 py-1.5 text-xs font-medium text-indigo-700 disabled:opacity-50" onClick={() => saveCreativeFeedback("winner", item)}>Mark Winner</button>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2">
+                  <button type="button" className="rounded-full border border-emerald-300 bg-emerald-50 px-3 py-1.5 text-xs font-medium text-emerald-700" onClick={() => saveCreativeFeedback("like", item)}>Like</button>
+                  <button type="button" className="rounded-full border border-rose-300 bg-rose-50 px-3 py-1.5 text-xs font-medium text-rose-700" onClick={() => saveCreativeFeedback("rejected", item)}>Reject</button>
+                </div>
+
+                <button
+                  type="button"
+                  className="w-full rounded-full bg-slate-900 px-3 py-2 text-xs font-medium text-white"
+                  onClick={() => generateImageForCard(item)}
+                >
+                  Generate Final Poster
+                </button>
+
+                <button
+                  type="button"
+                  disabled={!item.generated_image_result}
+                  className="w-full rounded-full border border-slate-400 bg-slate-100 px-3 py-2 text-xs font-medium text-slate-700 disabled:opacity-50"
+                  onClick={() => exportCreativePng(item)}
+                >
+                  Export PNG
+                </button>
               </div>
               <details className="mt-2 text-xs text-slate-600">
                 <summary>View prompt + scoring details</summary>
