@@ -1,0 +1,29 @@
+{
+  "userProfile": {
+    "defaultCountry": "Argentina",
+    "defaultLanguage": "Argentinian Spanish",
+    "targetAgeRange": "38-65",
+    "primaryGoal": "landing_page_lead_generation",
+    "tone": "trust_first",
+    "stylePreference": [
+      "institutional",
+      "premium_minimal",
+      "mobile_first",
+      "clean_financial_education"
+    ],
+    "avoid": [
+      "realistic_person_photo",
+      "dark_saas_dashboard",
+      "tiny_text",
+      "profit_claims",
+      "specific_investment_firms",
+      "cfa",
+      "portfolio_manager",
+      "download_cta"
+    ],
+    "required": {
+      "size": "1254x1254",
+      "disclaimer": "Educational content only. Not financial advice. Results are not guaranteed."
+    }
+  }
+}
