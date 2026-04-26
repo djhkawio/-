@@ -264,14 +264,21 @@ export default function Home() {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        prompt: item.design_prompt.prompt,
-        negativePrompt: item.design_prompt.negative_prompt,
-        textOverlay: item.design_prompt.text_overlay
+        headline: item.design_prompt.text_overlay.headline,
+        subheadline: item.design_prompt.text_overlay.subheadline,
+        trustReason: item.design_prompt.text_overlay.trust_reason,
+        cta: item.design_prompt.text_overlay.cta,
+        disclaimer: item.design_prompt.text_overlay.disclaimer,
+        artDirection: item.art_direction,
+        country: form.country,
+        language,
+        topic: form.theme
       })
     });
     const data = await res.json();
-    if (data?.image_url) {
-      setCreativeBatch((prev) => prev.map((v) => (v.id === item.id ? { ...v, generated_image_result: data.image_url } : v)));
+    const resolvedImage = data?.imageUrl || data?.image_url || (data?.imageBase64 ? `data:image/png;base64,${data.imageBase64}` : null);
+    if (resolvedImage) {
+      setCreativeBatch((prev) => prev.map((v) => (v.id === item.id ? { ...v, generated_image_result: resolvedImage } : v)));
     }
   };
 

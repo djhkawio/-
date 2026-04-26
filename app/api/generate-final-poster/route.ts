@@ -3,15 +3,15 @@ import OpenAI from "openai";
 import sharp from "sharp";
 
 type PosterPayload = {
-  prompt: string;
-  negativePrompt?: string;
-  textOverlay: {
-    headline: string;
-    subheadline: string;
-    trust_reason: string;
-    cta: string;
-    disclaimer: string;
-  };
+  headline: string;
+  subheadline: string;
+  trustReason: string;
+  cta: string;
+  disclaimer: string;
+  artDirection: string;
+  country: string;
+  language: string;
+  topic: string;
 };
 
 function esc(value: string) {
@@ -25,20 +25,26 @@ function esc(value: string) {
 
 export async function POST(req: NextRequest) {
   try {
-    const { prompt, negativePrompt, textOverlay } = (await req.json()) as PosterPayload;
+    const { headline, subheadline, trustReason, cta, disclaimer, artDirection, country, language, topic } = (await req.json()) as PosterPayload;
     const apiKey = process.env.OPENAI_API_KEY;
     if (!apiKey) {
       return NextResponse.json({ error: "OPENAI_API_KEY missing" }, { status: 503 });
     }
 
     const client = new OpenAI({ apiKey });
-    const imagePrompt = `${prompt}
+    const imagePrompt = `Create a premium mobile-first financial education advertising poster background.
+Target country: ${country}
+Language context: ${language}
+Topic context: ${topic}
+Art direction: ${artDirection}
+No text in the generated base image.
 Generate only background + hero visual. No text, no labels, no buttons, no logos, no watermark, no system fields, no typography.`;
 
     const imageResult = await client.images.generate({
       model: "gpt-image-1",
       size: "1024x1024",
-      prompt: `${imagePrompt}\nNegative prompt: ${negativePrompt || "none"}`
+      prompt: `${imagePrompt}
+Negative prompt: no words, no labels, no logos, no watermarks, no dashboard UI screenshot, no cheap canva style`
     });
 
     const imageUrl = imageResult.data?.[0]?.url;
@@ -59,13 +65,13 @@ Generate only background + hero visual. No text, no labels, no buttons, no logos
         </defs>
         <rect x="0" y="0" width="1254" height="1254" fill="url(#fade)" />
         <rect x="72" y="72" width="1110" height="1110" rx="28" fill="rgba(248,250,252,0.86)" />
-        <text x="120" y="240" font-size="72" font-family="Inter, Arial" font-weight="700" fill="#0f172a">${esc(textOverlay.headline)}</text>
-        <text x="120" y="350" font-size="40" font-family="Inter, Arial" fill="#334155">${esc(textOverlay.subheadline)}</text>
+        <text x="120" y="240" font-size="72" font-family="Inter, Arial" font-weight="700" fill="#0f172a">${esc(headline)}</text>
+        <text x="120" y="350" font-size="40" font-family="Inter, Arial" fill="#334155">${esc(subheadline)}</text>
         <rect x="120" y="430" width="980" height="90" rx="16" fill="rgba(15,23,42,0.06)" />
-        <text x="150" y="488" font-size="34" font-family="Inter, Arial" fill="#334155">${esc(textOverlay.trust_reason)}</text>
+        <text x="150" y="488" font-size="34" font-family="Inter, Arial" fill="#334155">${esc(trustReason)}</text>
         <rect x="120" y="930" width="380" height="88" rx="44" fill="#0f172a" />
-        <text x="152" y="986" font-size="32" font-family="Inter, Arial" font-weight="700" fill="#f8fafc">${esc(textOverlay.cta)}</text>
-        <text x="120" y="1148" font-size="23" font-family="Inter, Arial" fill="#475569">${esc(textOverlay.disclaimer)}</text>
+        <text x="152" y="986" font-size="32" font-family="Inter, Arial" font-weight="700" fill="#f8fafc">${esc(cta)}</text>
+        <text x="120" y="1148" font-size="23" font-family="Inter, Arial" fill="#475569">${esc(disclaimer)}</text>
       </svg>
     `;
 
@@ -76,10 +82,11 @@ Generate only background + hero visual. No text, no labels, no buttons, no logos
 
     return NextResponse.json({
       image_url: `data:image/png;base64,${finalBuffer.toString("base64")}`,
+      imageUrl: `data:image/png;base64,${finalBuffer.toString("base64")}`,
+      imageBase64: finalBuffer.toString("base64"),
       status: "generated"
     });
   } catch {
     return NextResponse.json({ error: "generate-final-poster failed" }, { status: 500 });
   }
 }
-
